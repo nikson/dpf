@@ -1,68 +1,51 @@
 #include <iostream>
 using namespace std;
 
-class User
-{
+class Base {
+public:
+    void process()
+    {
+        // Template method
+        step_one();
+        step_two();
+        step_three();
+        cout << "Templete method: process() finish..." << endl;
+    }
 protected:
-    string username;
-    string password;
-
-public:
-    // interface methods
-    virtual void setName(string name) = 0;
-    virtual void setPassword(string pwd) = 0;
-
-    // Template method
-    bool Login()
+    virtual void step_one() = 0;        // abstract methods
+    virtual void step_two() = 0;
+    virtual void step_three()
     {
-        cout << "Login user: " << username << endl;
-        return true;
+        cout << "Base" << ": " << "step_three() is invoked!" << endl;
     }
 };
 
-class Student : public User
+class Client1 : public Base
 {
-public:
-    void setName(string name)
+private:
+    string name = "Client1";
+protected:
+    // Hook methods
+    void step_one()
     {
-        username = name;
+        cout << name << ": " << "step_one() is invoked!" << endl;
+        // work for step one
     }
 
-    void setPassword(string pwd)
+    void step_two()
     {
-        password = pwd;
+        cout << name << ": " << "step_two() is invoked!" << endl;
+        // work for step two
     }
 
-    // Student has limited properties
-};
-
-class Employee : public User
-{
-public:
-    void setName(string name)
-    {
-        username = name;
-    }
-
-    void setPassword(string pwd)
-    {
-        password = pwd;
-    }
-
-    // emplyee can hold many other properties and privilege
 };
 
 int main()
 {
-    User *data[2] = {  new Student(), new Employee() };
+    Base *t = new Client1();
 
-    data[0]->setName("Student 1");
-    data[1]->setName("Employee 1");
-
-    for ( int i = 0; i < 2; i++)
-    {
-        data[i]->Login();
-    }
+    // Calling Template method, which will call the all hook methods of subclass
+    t->process();
 
     return 0;
 }
