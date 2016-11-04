@@ -28,15 +28,20 @@ class AbstractFactoryPattern {
     }
 
     interface IRoom {
+        int getRoomNo();
+        IWall getSide(Direction dir);
+        void setSide(Direction d, IWall w) ;
+
         void enter();
         void walk(); 
     }
 
-    // Factory for room and wall 
+    // AbstractFactory: encapsulate room and wall factories 
     interface IElementFactory {
-        Room createRoom(int roomNo);
-        Wall createWall();
-        DoorWall createDoorWall(Room r1, Room r2);
+        IRoom createRoom(int roomNo);
+        IRoom createMagicRoom(int rno);
+        IWall createWall();
+        IWall createDoorWall(IRoom r1, IRoom r2);
     }
     // end of abstraction 
 
@@ -46,20 +51,21 @@ class AbstractFactoryPattern {
             // N.B.:  I'm not sure can I create Room and Wall  here
             Maze aMaze = new Maze();
             // create room & wall factory
-            IElementFactory roomFactory = new RoomFactory();
-            IElementFactory wallFactory = new WallFactory();
-
-            Room r1 = roomFactory.createRoom(1);
-            Room r2 = roomFactory.createRoom (2);        
-            DoorWall d = wallFactory.createDoorWall(r1, r2);
+            IElementFactory factories = new ElementFactory();
+            
+            // client unaware the exact type of object return by factory
+            IRoom r1 = factories.createRoom(1);
+            IRoom r2 = factories.createMagicRoom (2); 
+            IWall w = factories.createWall();       
+            IWall d = factories.createDoorWall(r1, r2);
                     
-            r1.setSide(Direction.NORTH, new Wall());
+            r1.setSide(Direction.NORTH, w);
             r1.setSide(Direction.EAST, d);
-            r1.setSide(Direction.SOUTH, new Wall());
-            r1.setSide(Direction.WEST, new Wall());
-            r2.setSide(Direction.NORTH, new Wall());
-            r2.setSide(Direction.EAST, new Wall());
-            r2.setSide(Direction.SOUTH, new Wall());
+            r1.setSide(Direction.SOUTH, w);
+            r1.setSide(Direction.WEST, w);
+            r2.setSide(Direction.NORTH, w);
+            r2.setSide(Direction.EAST, w);
+            r2.setSide(Direction.SOUTH, w);
             r2.setSide(Direction.WEST, d);
 
             aMaze.addRoom(r1);
@@ -69,41 +75,26 @@ class AbstractFactoryPattern {
         }
     }
 
+    // Another abstraction on top of ElementFactory (Room & Wall)
+    public class MagicMazeFactory implements IMazeFactory {
+        public Maze createMaze () {
+            // ToDo: 
+            return new Maze();
+        }        
+    }
+
     class Wall implements IWall {
         public void enter() {
             System.out.println("Simple Wall...");
         }
     }
-
-    class Room implements IRoom {
-        private Map<Direction, Wall> sides = new HashMap<Direction, Wall>();
-        private int roomNo;
-
-        public Room (int rno){
-            roomNo = rno;
-        }
-
-        public int getRoomNo() { return roomNo; }
-        public Wall getSide(Direction dir){ return sides.get(dir); }
-        public void setSide(Direction d, Wall w) { sides.put(d, w); }
-
-        public void enter() {
-            System.out.println("Entered into room: " + roomNo );
-        }
-
-        public void walk() {
-            for ( Wall w : sides.values() ) {
-                w.enter();
-            }
-        }
-    }
-
+    
     class DoorWall extends Wall {
-        private Room r1;
-        private Room r2;
+        private IRoom r1;
+        private IRoom r2;
         private boolean isOpen;
 
-        public DoorWall (Room r1, Room r2) {
+        public DoorWall (IRoom r1, IRoom r2) {
             this.r1 = r1;
             this.r2 = r2;
             isOpen = false;
@@ -114,42 +105,138 @@ class AbstractFactoryPattern {
         }
     }
 
-    class RoomFactory implements IElementFactory {
-        public Room createRoom(int rno) {
-            return new Room(rno);
+    class Room implements IRoom {
+        protected Map<Direction, IWall> sides = new HashMap<Direction, IWall>();
+        protected int roomNo;
+
+        public Room (int rno){
+            roomNo = rno;
         }
 
-        public Wall createWall() { return null; }
+        public int getRoomNo() { return roomNo; }
+        public IWall getSide(Direction dir){ return sides.get(dir); }
+        public void setSide(Direction d, IWall w) { sides.put(d, w); }
 
-        public DoorWall createDoorWall(Room r1, Room r2) { return null; }
+        public void enter() {
+            System.out.println("Entered into room: " + roomNo );
+        }
+
+        public void walk() {
+            for ( IWall w : sides.values() ) {
+                w.enter();
+            }
+        }
+    }
+
+    class MagicRoom extends Room {        
+
+        public MagicRoom(int rno) {
+            super(rno);
+        }
+
+        public void enter() {
+            System.out.println("Entered into magic room: " + this.roomNo );
+        }        
     }
 
 
-    class WallFactory implements IElementFactory {
-        public Room createRoom(int rno) {
+    // Concrete class of IElementFactory (AbstractFactory) 
+    class ElementFactory implements IElementFactory {
+        IElementFactory roomFactory = new RoomFactory();
+        IElementFactory mroomFactory = new MagicRoomFactory();
+        IElementFactory wallFactory = new WallFactory();
+        IElementFactory dwallFactory = new DoorWallFactory();
+
+        public IRoom createRoom(int rno) {
+            return roomFactory.createRoom(rno);
+        }
+
+        public IRoom createMagicRoom(int rno) {
+            return mroomFactory.createMagicRoom(rno);
+        }
+
+        public IWall createWall() { 
+            return wallFactory.createWall(); 
+        }
+
+        public IWall createDoorWall(IRoom r1, IRoom r2) { 
+            return dwallFactory.createDoorWall(r1, r2); 
+        }
+    }
+
+    // Concrete Factory 1 : Room
+    class RoomFactory implements IElementFactory {
+        public IRoom createRoom(int rno) {
+              return new Room(rno);
+        }
+
+        public IRoom createMagicRoom(int rno) {
             return null;
         }
 
-        public Wall createWall() {
+        public IWall createWall() { return null; }
+
+        public IWall createDoorWall(IRoom r1, IRoom r2) { return null; }
+    }
+
+    // Concrete Factory 2 : Room
+    class MagicRoomFactory implements IElementFactory {
+        public IRoom createRoom(int rno) {
+            return null;
+        }
+
+        public IRoom createMagicRoom(int rno) {
+            return new MagicRoom(rno);
+        }
+
+        public IWall createWall() { return null; }
+
+        public IWall createDoorWall(IRoom r1, IRoom r2) { return null; }
+    }
+
+    // Concrete Factory 1 : Wall 
+    class WallFactory implements IElementFactory {
+        public IRoom createRoom(int rno) {
+            return null;
+        }
+
+        public IRoom createMagicRoom(int rno) { return null; } 
+
+        public IWall createWall() {
             return new Wall();
         }
 
-        public DoorWall createDoorWall(Room r1, Room r2) {
+        public IWall createDoorWall(IRoom r1, IRoom r2) { return null; }            
+    }
+
+    // Concrete Factory 2 : Wall
+    class DoorWallFactory implements IElementFactory {
+        public IRoom createRoom(int rno) {
+            return null;
+        }
+
+        public IRoom createMagicRoom(int rno) { return null; }
+
+        public IWall createWall() {
+            return null;
+        }
+
+        public IWall createDoorWall(IRoom r1, IRoom r2) { 
             return new DoorWall(r1, r2);
         }
     }
 
     public class Maze {
-        private Map<Integer, Room> rooms = new HashMap<Integer, Room>();
+        private Map<Integer, IRoom> rooms = new HashMap<Integer, IRoom>();
         
-        public void addRoom(Room r) { 
+        public void addRoom(IRoom r) { 
             rooms.put(r.getRoomNo(), r); 
         }
         
-        public Room roomNo (int r) { return rooms.get(r); }
+        public IRoom roomNo (int r) { return rooms.get(r); }
 
         public void walk() {
-            for ( Room r : rooms.values() ) {
+            for ( IRoom r : rooms.values() ) {
                 r.enter();
                 r.walk();
             }
