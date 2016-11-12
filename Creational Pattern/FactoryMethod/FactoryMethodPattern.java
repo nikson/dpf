@@ -8,8 +8,8 @@ class FactoryMethodPattern {
     public static void main(String args[]) {
        
         // create maze object using abstract factory
-        FactoryMethodPattern.IMazeBase maze = new FactoryMethodPattern().new MagicMazeGame();
-        FactoryMethodPattern.Maze aMaze = maze.createMaze();
+        FactoryMethodPattern.IMazeGame maze = new FactoryMethodPattern().new MagicMazeGame();
+        FactoryMethodPattern.Maze aMaze = maze.createMazeGame();
         
         // Walk through the all rooms 
         aMaze.walk();        
@@ -18,10 +18,12 @@ class FactoryMethodPattern {
     public enum Direction { EAST, WEST, NORTH, SOUTH }
 
     // Maze interface of factory methods  
-    public interface IMazeBase {
-        IRoom createRoom();
-        IWall createWall();
-        Maze createMaze();
+    public interface IMazeGame {    	
+        IRoom makeRoom(int rno);
+        IWall makeWall();
+	IWall makeDoor(IRoom r1, IRoom r2);
+        Maze makeMaze();
+	Maze createMazeGame();
     }
 
     interface IWall {
@@ -37,53 +39,48 @@ class FactoryMethodPattern {
         void walk(); 
     }
 
-    public abstract class AbastractMaze implements IMazeBase {
-        // abstract protected IRoom createRoom();
-        // abstract protected IWall createWall();
+    public class MazeGame implements IMazeGame {
 
-        public Maze createMaze() {
-            Maze aMaze = new Maze();
+        public Maze createMazeGame() {
+            Maze aMaze = makeMaze();
                         
-            IRoom r1 = createRoom();
-            IRoom r2 = createRoom();
-            IWall w = createWall();
+            IRoom r1 = makeRoom(1);
+            IRoom r2 = makeRoom(2);
+            IWall w = makeWall();
+	    IWall dw = makeDoor(r1, r2);
 
             r1.setSide(Direction.EAST, w);
+            r1.setSide(Direction.WEST, dw);
+            r1.setSide(Direction.NORTH, w);
+            r1.setSide(Direction.SOUTH, w);
+            r1.setSide(Direction.EAST, dw);
+            r1.setSide(Direction.WEST, w);
+            r1.setSide(Direction.NORTH, w);
+            r1.setSide(Direction.SOUTH, w);
          
             aMaze.addRoom(r1);
             aMaze.addRoom(r2);
 
             return aMaze;             
         }
-    }
+	
+	public Maze makeMaze() { return new Maze(); }
 
-    public class MazeGame extends AbastractMaze {
-        int roomNo = 1;
-
-        @Override 
-        public IRoom createRoom() {
-            return new Room(roomNo++);      // Return ordinary room
+        public IWall makeWall() {
+            return new Wall();         
         }
 
-        @Override 
-        public IWall createWall() {
-            return new Wall();              // Return simple wall
-        }
+	public IRoom makeRoom(int rno) { return new Room(rno); }; 
+
+	public IWall makeDoor(IRoom r1, IRoom r2) { return new DoorWall(r1, r2); }
     }
 
     
-    public class MagicMazeGame extends AbastractMaze {
-        int roomNo = 1;
+    public class MagicMazeGame extends MazeGame {
 
-        @Override 
-        public IRoom createRoom() {
-            return new MagicRoom(roomNo++);         // Return Magic room 
-        }
+	public IRoom makeRoom(int rno) { return new MagicRoom(rno); }; 
 
-        @Override 
-        public IWall createWall() {
-            return new DoorWall();                  // Return door wall 
-        }
+	public IWall makeDoor(IRoom r1, IRoom r2) { return new DoorWall(r1, r2); }
     }
 
     class Wall implements IWall {
@@ -133,9 +130,13 @@ class FactoryMethodPattern {
     }
 
     class MagicRoom extends Room {        
+	private String spell; 
 
-        public MagicRoom(int rno) {
+	public MagicRoom(int rno) { super(rno); } 
+
+        public MagicRoom(int rno, String spell) {
             super(rno);
+	    this.spell = spell;
         }
 
         public void enter() {
