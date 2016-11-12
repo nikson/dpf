@@ -6,56 +6,29 @@ import java.util.HashMap;
 class AbstractFactoryPattern {
 
     public static void main(String args[]) {
-       
+      
+	System.out.println("Loading General Maze:.....");
         // create maze object using abstract factory
-        AbstractFactoryPattern.IMazeFactory mazeFactory = new AbstractFactoryPattern().new MazeFactory();
-        AbstractFactoryPattern.Maze aMaze = mazeFactory.createMaze();
+        AbstractFactoryPattern.IMazeFactory mazeFactory = 
+		new AbstractFactoryPattern().new MazeFactory();
+        AbstractFactoryPattern.Maze aMaze = buildMaze(mazeFactory );
         
         // Walk through the all rooms 
         aMaze.walk();        
+
+	System.out.println("Loading Magic Maze:.....");
+	mazeFactory = new AbstractFactoryPattern().new MagicMazeFactory();
+        aMaze = buildMaze(mazeFactory );
+        aMaze.walk();        
     }
 
-    public enum Direction { EAST, WEST, NORTH, SOUTH }
-
-    // Abstraction using interface
-    // Maze factory 
-    public interface IMazeFactory {
-        Maze createMaze();
-    }
-
-    interface IWall {
-        void enter();
-    }
-
-    interface IRoom {
-        int getRoomNo();
-        IWall getSide(Direction dir);
-        void setSide(Direction d, IWall w) ;
-
-        void enter();
-        void walk(); 
-    }
-
-    // AbstractFactory: encapsulate room and wall factories 
-    interface IElementFactory {
-        IRoom createRoom(int roomNo);
-        IRoom createMagicRoom(int rno);
-        IWall createWall();
-        IWall createDoorWall(IRoom r1, IRoom r2);
-    }
-    // end of abstraction 
-
-    public class MazeFactory implements IMazeFactory {
-
-        public Maze createMaze() {
-            // N.B.:  I'm not sure can I create Room and Wall  here
-            Maze aMaze = new Maze();
-            // create room & wall factory
-            IElementFactory factories = new ElementFactory();
+    public static Maze buildMaze(IMazeFactory factories) {
+    
+            Maze aMaze = factories.createMaze();
             
             // client unaware the exact type of object return by factory
             IRoom r1 = factories.createRoom(1);
-            IRoom r2 = factories.createMagicRoom (2); 
+            IRoom r2 = factories.createRoom (2); 
             IWall w = factories.createWall();       
             IWall d = factories.createDoorWall(r1, r2);
                     
@@ -72,16 +45,31 @@ class AbstractFactoryPattern {
             aMaze.addRoom(r2);
 
             return aMaze;             
-        }
     }
 
-    // Another abstraction on top of ElementFactory (Room & Wall)
-    public class MagicMazeFactory implements IMazeFactory {
-        public Maze createMaze () {
-            // ToDo: 
-            return new Maze();
-        }        
+    public enum Direction { EAST, WEST, NORTH, SOUTH }
+
+    // Abstraction using interface: Maze factory 
+    public interface IMazeFactory {
+        Maze createMaze();
+        IRoom createRoom(int roomNo);
+        IWall createWall();
+        IWall createDoorWall(IRoom r1, IRoom r2);
     }
+
+    interface IWall {
+        void enter();
+    }
+
+    interface IRoom {
+        int getRoomNo();
+        IWall getSide(Direction dir);
+        void setSide(Direction d, IWall w) ;
+
+        void enter();
+        void walk(); 
+    }
+
 
     class Wall implements IWall {
         public void enter() {
@@ -102,6 +90,25 @@ class AbstractFactoryPattern {
 
         public void enter() {
             System.out.println("Crossing a door wall...");
+        }
+    }
+
+
+    class SpellDoorWall extends Wall {
+        private IRoom r1;
+        private IRoom r2;
+        private boolean isOpen;
+	private String spell;
+
+        public SpellDoorWall (IRoom r1, IRoom r2, String spell) {
+            this.r1 = r1;
+            this.r2 = r2;
+            this.isOpen = false;
+	    this.spell = spell;
+        }
+
+        public void enter() {
+            System.out.println("Crossing a spell door wall...");
         }
     }
 
@@ -128,11 +135,18 @@ class AbstractFactoryPattern {
         }
     }
 
-    class MagicRoom extends Room {        
+    class MagicRoom extends Room {
+    	private String spell;
 
         public MagicRoom(int rno) {
             super(rno);
         }
+
+
+        public MagicRoom(int rno, String spell) {
+            super(rno);
+	    this.spell = spell;
+	}
 
         public void enter() {
             System.out.println("Entered into magic room: " + this.roomNo );
@@ -140,90 +154,39 @@ class AbstractFactoryPattern {
     }
 
 
-    // Concrete class of IElementFactory (AbstractFactory) 
-    class ElementFactory implements IElementFactory {
-        IElementFactory roomFactory = new RoomFactory();
-        IElementFactory mroomFactory = new MagicRoomFactory();
-        IElementFactory wallFactory = new WallFactory();
-        IElementFactory dwallFactory = new DoorWallFactory();
+    public class MazeFactory implements IMazeFactory {
 
+        public Maze createMaze () {
+            return new Maze();
+        }        
         public IRoom createRoom(int rno) {
-            return roomFactory.createRoom(rno);
-        }
-
-        public IRoom createMagicRoom(int rno) {
-            return mroomFactory.createMagicRoom(rno);
-        }
+	    return new Room(rno);        
+	}
 
         public IWall createWall() { 
-            return wallFactory.createWall(); 
+            return new Wall(); 
         }
 
         public IWall createDoorWall(IRoom r1, IRoom r2) { 
-            return dwallFactory.createDoorWall(r1, r2); 
+            return new DoorWall(r1, r2); 
         }
     }
 
-    // Concrete Factory 1 : Room
-    class RoomFactory implements IElementFactory {
+
+    public class MagicMazeFactory extends MazeFactory {
+
         public IRoom createRoom(int rno) {
-              return new Room(rno);
-        }
+	    return new MagicRoom(rno, genSpell());        
+	}
 
-        public IRoom createMagicRoom(int rno) {
-            return null;
-        }
-
-        public IWall createWall() { return null; }
-
-        public IWall createDoorWall(IRoom r1, IRoom r2) { return null; }
-    }
-
-    // Concrete Factory 2 : Room
-    class MagicRoomFactory implements IElementFactory {
-        public IRoom createRoom(int rno) {
-            return null;
-        }
-
-        public IRoom createMagicRoom(int rno) {
-            return new MagicRoom(rno);
-        }
-
-        public IWall createWall() { return null; }
-
-        public IWall createDoorWall(IRoom r1, IRoom r2) { return null; }
-    }
-
-    // Concrete Factory 1 : Wall 
-    class WallFactory implements IElementFactory {
-        public IRoom createRoom(int rno) {
-            return null;
-        }
-
-        public IRoom createMagicRoom(int rno) { return null; } 
-
-        public IWall createWall() {
-            return new Wall();
-        }
-
-        public IWall createDoorWall(IRoom r1, IRoom r2) { return null; }            
-    }
-
-    // Concrete Factory 2 : Wall
-    class DoorWallFactory implements IElementFactory {
-        public IRoom createRoom(int rno) {
-            return null;
-        }
-
-        public IRoom createMagicRoom(int rno) { return null; }
-
-        public IWall createWall() {
-            return null;
-        }
 
         public IWall createDoorWall(IRoom r1, IRoom r2) { 
-            return new DoorWall(r1, r2);
+            return new SpellDoorWall(r1, r2, genSpell()); 
         }
+
+	private String genSpell() {
+		return "XXX"; 	   // generate a random spell word
+	}
     }
 
     public class Maze {
